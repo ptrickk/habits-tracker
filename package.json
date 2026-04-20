@@ -1,0 +1,21 @@
+{
+  "name": "habitstracker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "firebaseInit.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "vite build",
+    "dev": "vite"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "vite": "^8.0.9"
+  },
+  "dependencies": {
+    "firebase": "^12.12.0"
+  }
+}
