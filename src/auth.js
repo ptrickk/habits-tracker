@@ -1,8 +1,11 @@
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { app } from "../firebaseInit.js";
+import { setAccessToken } from "./sheets.js";
 
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+provider.addScope("https://www.googleapis.com/auth/spreadsheets.readonly");
+
 const ALLOWED_EMAIL = "patrickgamedt@gmail.com";
 
 export function initAuth(onAuthorized, onUnauthorized) {
@@ -20,8 +23,10 @@ export function initAuth(onAuthorized, onUnauthorized) {
   });
 }
 
-export function login() {
-  return signInWithPopup(auth, provider);
+export async function login() {
+  const result = await signInWithPopup(auth, provider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  setAccessToken(credential.accessToken);
 }
 
 export function logout() {
