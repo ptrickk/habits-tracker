@@ -139,6 +139,38 @@ export function renderRings(today, averages) {
   `;
 }
 
+export function renderHistoryGrid(pastDays) {
+  if (!pastDays.length) return '';
+
+  const cells = pastDays.map(({ date, totals }) => {
+    const label = date.toLocaleDateString("de-DE", { day: "numeric", month: "numeric" });
+
+    const svgContent = HABITS.map((habit, index) => {
+      const radius        = RING_RADII[index];
+      const circumference = 2 * Math.PI * radius;
+      const progress      = calculateProgress(habit, totals);
+      const clamped       = Math.min(Math.max(progress, 3 / circumference), 1);
+      const dashOffset    = circumference * (1 - clamped);
+      return `
+        <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${radius}" fill="none"
+          stroke="${habit.color}22" stroke-width="${STROKE_WIDTH}" />
+        <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${radius}" fill="none"
+          stroke="${habit.color}" stroke-width="${STROKE_WIDTH}"
+          stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}"
+          stroke-linecap="round"
+          transform="rotate(-90 ${CENTER_X} ${CENTER_Y})" />`;
+    }).join('');
+
+    return `
+      <div class="history-cell">
+        <svg viewBox="0 0 ${SVG_SIZE} ${SVG_SIZE}" class="history-svg">${svgContent}</svg>
+        <span class="history-date">${label}</span>
+      </div>`;
+  }).join('');
+
+  return `<div class="history-grid">${cells}</div>`;
+}
+
 export function animateRings() {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {

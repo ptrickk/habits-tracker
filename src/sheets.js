@@ -58,6 +58,21 @@ export function getDailyAverages(data) {
   };
 }
 
+export function getPast9DaysTotals(data) {
+  const today = new Date().toDateString();
+  const byDay = {};
+  for (const row of data) {
+    const key = row.timestamp.toDateString();
+    if (key === today) continue;
+    if (!byDay[key]) byDay[key] = [];
+    byDay[key].push(row);
+  }
+  return Object.entries(byDay)
+    .sort(([a], [b]) => new Date(b) - new Date(a))
+    .slice(0, 9)
+    .map(([key, rows]) => ({ date: new Date(key), totals: sumRows(rows) }));
+}
+
 function sumRows(rows) {
   return rows.reduce(
     (acc, r) => ({

@@ -1,7 +1,7 @@
 import "./style.css";
 import { initAuth, login, logout } from "./auth.js";
-import { fetchHabitData, getTodayTotals, getDailyAverages } from "./sheets.js";
-import { renderRings, animateRings } from "./rings.js";
+import { fetchHabitData, getTodayTotals, getDailyAverages, getPast9DaysTotals } from "./sheets.js";
+import { renderRings, animateRings, renderHistoryGrid } from "./rings.js";
 
 initAuth(
   (user) => renderApp(user),
@@ -20,17 +20,26 @@ async function renderApp(user) {
   document.getElementById("logout-btn").addEventListener("click", logout);
 
   try {
-    const data = await fetchHabitData();
-    const today = getTodayTotals(data);
+    const data     = await fetchHabitData();
+    const today    = getTodayTotals(data);
     const averages = getDailyAverages(data);
-    document.getElementById("status").replaceWith(
-      Object.assign(document.createElement("div"), {
-        innerHTML: renderRings(today, averages),
-      }).firstElementChild
-    );
+    const pastDays = getPast9DaysTotals(data);
+
+    const ringsEl = Object.assign(document.createElement("div"), {
+      innerHTML: renderRings(today, averages),
+    }).firstElementChild;
+    document.getElementById("status").replaceWith(ringsEl);
     animateRings();
+
+    const historyHtml = renderHistoryGrid(pastDays);
+    if (historyHtml) {
+      const historyEl = Object.assign(document.createElement("div"), {
+        innerHTML: historyHtml,
+      }).firstElementChild;
+      ringsEl.after(historyEl);
+    }
   } catch (err) {
-    if (err.message === "No access token") {
+    if (err.message === "No access token" || err.message.includes("401")) {
       document.getElementById("status").innerHTML = `
         <button class="reconnect-btn" id="reconnect-btn">Reconnect Google Sheets</button>
       `;

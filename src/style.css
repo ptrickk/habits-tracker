@@ -146,3 +146,26 @@ body {
 }
 
 .error-msg { color: #FF375F; font-size: 0.85rem; }
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 480px;
+  margin: 2rem auto 0;
+}
+
+.history-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.history-svg { width: 100%; }
+
+.history-date {
+  font-size: 0.7rem;
+  color: #444;
+}
