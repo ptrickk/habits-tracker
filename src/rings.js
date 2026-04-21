@@ -1,141 +1,139 @@
 import { HABIT_TARGETS } from './config.js';
 
 const HABITS = [
-  { key: "seitenGelesen", label: "Seiten gelesen", unit: "S", color: "#FF375F", negative: false },
-  { key: "x",             label: "X",      unit: "",  color: "#FF9F0A", negative: true  },
-  { key: "wasser",        label: "Wasser getrunken", unit: "L", color: "#30D158", negative: false },
-  { key: "meditation",    label: "Meditation", unit: "",  color: "#5AC8FA", negative: false },
+  { key: "seitenGelesen", label: "Seiten gelesen",   unit: "",    color: "#FF375F", negative: false },
+  { key: "x",             label: "X",                unit: "",    color: "#FF9F0A", negative: true  },
+  { key: "wasser",        label: "Wasser getrunken", unit: "l",   color: "#30D158", negative: false },
+  { key: "meditation",    label: "Meditation",       unit: "min", color: "#5AC8FA", negative: false },
 ];
 
-const RADII = [120, 90, 60, 30];
-const STROKE = 18;
-const SIZE = 300;
-const CX = SIZE / 2;
-const CY = SIZE / 2;
-const ARROW = 6;
+const RING_RADII   = [120, 90, 60, 30];
+const STROKE_WIDTH = 18;
+const SVG_SIZE     = 300;
+const CENTER_X     = SVG_SIZE / 2;
+const CENTER_Y     = SVG_SIZE / 2;
+const ARROW_SIZE   = 6;
 
-function getProgress(habit, today) {
-  const val = today[habit.key] || 0;
+function calculateProgress(habit, today) {
+  const value  = today[habit.key] || 0;
   const target = HABIT_TARGETS[habit.key];
   if (!target) return 0;
   return habit.negative
-    ? Math.max(0, 1 - val / target)
-    : val / target;
+    ? Math.max(0, 1 - value / target)
+    : value / target;
 }
 
-function fmt(n) {
+function formatNumber(n) {
   return Number.isInteger(n) ? String(n) : n.toFixed(2);
 }
 
-function arrowhead(r, color, negative) {
-  const ty = CY - r;
-  const backX = negative ? CX + ARROW : CX - ARROW;
-  return `<path d="M ${backX},${ty - ARROW} L ${CX},${ty} L ${backX},${ty + ARROW}"
+function renderArrowhead(radius, color, negative) {
+  const tipY  = CENTER_Y - radius;
+  const backX = negative ? CENTER_X + ARROW_SIZE : CENTER_X - ARROW_SIZE;
+  return `<path d="M ${backX},${tipY - ARROW_SIZE} L ${CENTER_X},${tipY} L ${backX},${tipY + ARROW_SIZE}"
     fill="none" stroke="white" stroke-width="2.5"
     stroke-linecap="round" stroke-linejoin="round" />`;
 }
 
 export function renderRings(today, averages) {
-  const rings = HABITS.map((habit, i) => {
-    const r = RADII[i];
-    const circ = 2 * Math.PI * r;
-    const progress = getProgress(habit, today);
-    const overflow = progress > 1;
-    const overflowFraction = progress % 1;
+  const rings = HABITS.map((habit, index) => {
+    const radius        = RING_RADII[index];
+    const circumference = 2 * Math.PI * radius;
+    const progress      = calculateProgress(habit, today);
+    const isOverflow    = progress > 1;
+    const overflowProgress = progress % 1;
 
-    // Minimum visible arc so rounded linecap always renders a dot
-    const minProgress = 3 / circ;
-    const visibleProgress = Math.max(minProgress, overflow ? 1 : progress);
+    // Clamp to minimum arc length so stroke-linecap="round" always renders a visible dot
+    const minimumProgress = 3 / circumference;
+    const clampedProgress = Math.max(minimumProgress, isOverflow ? 1 : progress);
 
-    // Base arc: if overflow, draw full circle; else draw visibleProgress
-    const finalOffset = overflow ? 0 : circ * (1 - visibleProgress);
-    const startOffset = habit.negative ? 0 : circ;
+    // Base arc: full circle on overflow, otherwise clampedProgress fraction
+    const initialDashOffset = habit.negative ? 0 : circumference;
+    const targetDashOffset  = isOverflow ? 0 : circumference * (1 - clampedProgress);
 
-    // Overflow arc: draws on top, 0 → overflowFraction
-    const overflowFinalOffset = overflow ? circ * (1 - overflowFraction) : circ;
+    // Overflow arc: second lap drawn on top at reduced opacity
+    const overflowDashOffset = isOverflow ? circumference * (1 - overflowProgress) : circumference;
 
-    // Arrow angle: position within current lap
-    // +capAngleDeg compensates for stroke-linecap="round" extending the arc visually
-    const capAngleDeg = (STROKE / 4 / r) * (180 / Math.PI);
-    const arrowFraction = overflow ? overflowFraction : progress;
-    const startRotate = habit.negative ? 360 : 0;
-    const finalRotate = arrowFraction * 360 + capAngleDeg;
+    // Arrow rotation: compensate for stroke-linecap="round" extending the arc visually
+    const strokeCapAngle  = (STROKE_WIDTH / 4 / radius) * (180 / Math.PI);
+    const arrowProgress   = isOverflow ? overflowProgress : progress;
+    const initialRotation = habit.negative ? 360 : 0;
+    const targetRotation  = arrowProgress * 360 + strokeCapAngle;
 
-    // Average marker position on ring
-    const avgVal = averages[habit.key] || 0;
-    const target = HABIT_TARGETS[habit.key];
-    const avgProgress = habit.negative
-      ? Math.max(0, 1 - avgVal / target)
-      : Math.min(1, avgVal / target);
-    const avgAngle = avgProgress * 360;
+    // Average marker: position of daily average relative to target
+    const dailyAverageValue = averages[habit.key] || 0;
+    const habitTarget       = HABIT_TARGETS[habit.key];
+    const averageProgress   = habit.negative
+      ? Math.max(0, 1 - dailyAverageValue / habitTarget)
+      : Math.min(1, dailyAverageValue / habitTarget);
+    const averageAngle = averageProgress * 360;
 
-    const delay = i * 0.15;
-    const transition = `1s cubic-bezier(0.4,0,0.2,1) ${delay}s`;
+    const animationDelay      = index * 0.15;
+    const animationTransition = `1s cubic-bezier(0.4,0,0.2,1) ${animationDelay}s`;
 
     return `
       <!-- track -->
-      <circle cx="${CX}" cy="${CY}" r="${r}" fill="none"
-        stroke="${habit.color}22" stroke-width="${STROKE}" />
+      <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${radius}" fill="none"
+        stroke="${habit.color}22" stroke-width="${STROKE_WIDTH}" />
       <!-- base arc -->
-      <circle cx="${CX}" cy="${CY}" r="${r}" fill="none"
-        stroke="${habit.color}" stroke-width="${STROKE}"
-        stroke-dasharray="${circ}" stroke-dashoffset="${startOffset}"
+      <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${radius}" fill="none"
+        stroke="${habit.color}" stroke-width="${STROKE_WIDTH}"
+        stroke-dasharray="${circumference}" stroke-dashoffset="${initialDashOffset}"
         stroke-linecap="round"
-        transform="rotate(-90 ${CX} ${CY})"
+        transform="rotate(-90 ${CENTER_X} ${CENTER_Y})"
         class="ring-progress"
-        data-final="${finalOffset}"
-        style="transition: stroke-dashoffset ${transition}" />
+        data-final="${targetDashOffset}"
+        style="transition: stroke-dashoffset ${animationTransition}" />
       <!-- overflow arc (above target) -->
-      <circle cx="${CX}" cy="${CY}" r="${r}" fill="none"
-        stroke="${habit.color}" stroke-width="${STROKE}"
-        stroke-dasharray="${circ}" stroke-dashoffset="${circ}"
+      <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${radius}" fill="none"
+        stroke="${habit.color}" stroke-width="${STROKE_WIDTH}"
+        stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}"
         stroke-linecap="round"
-        transform="rotate(-90 ${CX} ${CY})"
+        transform="rotate(-90 ${CENTER_X} ${CENTER_Y})"
         class="ring-overflow"
-        data-final="${overflowFinalOffset}"
-        style="opacity:0.55; transition: stroke-dashoffset ${transition}" />
+        data-final="${overflowDashOffset}"
+        style="opacity:0.55; transition: stroke-dashoffset ${animationTransition}" />
       <!-- daily average marker -->
-      <g transform="rotate(${avgAngle} ${CX} ${CY})">
-        <line x1="${CX}" y1="${CY - r - STROKE / 2}"
-              x2="${CX}" y2="${CY - r + STROKE / 2}"
+      <g transform="rotate(${averageAngle} ${CENTER_X} ${CENTER_Y})">
+        <line x1="${CENTER_X}" y1="${CENTER_Y - radius - STROKE_WIDTH / 2}"
+              x2="${CENTER_X}" y2="${CENTER_Y - radius + STROKE_WIDTH / 2}"
               stroke="white" stroke-width="1.5" stroke-linecap="butt" opacity="0.6" />
       </g>
       <!-- arrow indicator -->
       <g class="ring-indicator"
-        data-final-rotate="${finalRotate}"
-        style="transform-origin:${CX}px ${CY}px; transform:rotate(${startRotate}deg);
-               transition: transform ${transition}">
-        ${arrowhead(r, habit.color, habit.negative)}
+        data-final-rotate="${targetRotation}"
+        style="transform-origin:${CENTER_X}px ${CENTER_Y}px; transform:rotate(${initialRotation}deg);
+               transition: transform ${animationTransition}">
+        ${renderArrowhead(radius, habit.color, habit.negative)}
       </g>
     `;
   }).join("");
 
   const labels = HABITS.map((habit) => {
-    const val = today[habit.key] || 0;
-    const avg = averages[habit.key] || 0;
-    const progress = getProgress(habit, today);
-    const pct = Math.round(progress * 100);
+    const value    = today[habit.key] || 0;
+    const progress = calculateProgress(habit, today);
+    const percentage = Math.round(progress * 100);
     return `
       <div class="ring-label">
         <span class="ring-dot" style="background:${habit.color}"></span>
         <span class="ring-name">${habit.label}</span>
         <span class="ring-stats">
-          <span class="ring-value" style="color:${habit.color}">${fmt(val)}${habit.unit}</span>
-          <span class="ring-avg">/ ${fmt(avg)}${habit.unit}</span>
-          <span class="ring-pct">${pct}%</span>
+          <span class="ring-value" style="color:${habit.color}">${formatNumber(value)}${habit.unit}</span>
+          <span class="ring-avg">/ ${formatNumber(HABIT_TARGETS[habit.key])}${habit.unit}</span>
+          <span class="ring-pct">${percentage}%</span>
         </span>
       </div>
     `;
   }).join("");
 
-  const today_date = new Date().toLocaleDateString("de-DE", {
+  const todayDate = new Date().toLocaleDateString("de-DE", {
     weekday: "long", day: "numeric", month: "long",
   });
 
   return `
     <div class="rings-container">
-      <p class="date-label">${today_date}</p>
-      <svg viewBox="0 0 ${SIZE} ${SIZE}" class="rings-svg">${rings}</svg>
+      <p class="date-label">${todayDate}</p>
+      <svg viewBox="0 0 ${SVG_SIZE} ${SVG_SIZE}" class="rings-svg">${rings}</svg>
       <div class="rings-labels">${labels}</div>
     </div>
   `;
