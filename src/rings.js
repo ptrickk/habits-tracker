@@ -27,6 +27,11 @@ function formatNumber(n) {
   return Number.isInteger(n) ? String(n) : n.toFixed(2);
 }
 
+function calculateDailyScore(totals) {
+  const sum = HABITS.reduce((acc, h) => acc + Math.min(calculateProgress(h, totals), 1), 0);
+  return Math.round((sum / HABITS.length) * 100);
+}
+
 function renderArrowhead(radius, color, negative) {
   const tipY  = CENTER_Y - radius;
   const backX = negative ? CENTER_X + ARROW_SIZE : CENTER_X - ARROW_SIZE;
@@ -100,7 +105,7 @@ export function renderRings(today, averages) {
     const goalText     = textAtAngle(goalAngle,      radius, `${formatNumber(habitTarget)}${habit.unit}`,         'rgba(255,255,255,0.3)',  `${habit.color}88`);
 
     return `
-      <g class="ring-group">
+      <g class="ring-group" data-habit="${habit.key}" data-color="${habit.color}">
         <!-- track -->
         <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${radius}" fill="none"
           stroke="${habit.color}22" stroke-width="${STROKE_WIDTH}" class="ring-track" />
@@ -151,7 +156,7 @@ export function renderRings(today, averages) {
     const progress = calculateProgress(habit, today);
     const percentage = Math.round(progress * 100);
     return `
-      <div class="ring-label">
+      <div class="ring-label" data-habit="${habit.key}">
         <span class="ring-dot" style="background:${habit.color}"></span>
         <span class="ring-name">${habit.label}</span>
         <span class="ring-stats">
@@ -167,10 +172,20 @@ export function renderRings(today, averages) {
     weekday: "long", day: "numeric", month: "long",
   });
 
+  const score = calculateDailyScore(today);
+
   return `
     <div class="rings-container">
       <p class="date-label">${todayDate}</p>
-      <svg viewBox="0 0 ${SVG_SIZE} ${SVG_SIZE}" class="rings-svg">${rings}</svg>
+      <div class="rings-svg-wrapper">
+        <svg viewBox="0 0 ${SVG_SIZE} ${SVG_SIZE}" class="rings-svg">${rings}</svg>
+      </div>
+      <div class="score-row">
+        <div class="score-card">
+          <span class="score-value">${score}%</span>
+          <span class="score-label">Daily Score</span>
+        </div>
+      </div>
       <div class="rings-labels">${labels}</div>
     </div>
   `;
@@ -190,22 +205,68 @@ export function renderHistoryGrid(pastDays) {
       const dashOffset    = circumference * (1 - clamped);
       return `
         <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${radius}" fill="none"
-          stroke="${habit.color}22" stroke-width="${STROKE_WIDTH}" />
+          stroke="${habit.color}22" stroke-width="${STROKE_WIDTH}" class="history-track" />
         <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${radius}" fill="none"
           stroke="${habit.color}" stroke-width="${STROKE_WIDTH}"
           stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}"
           stroke-linecap="round"
-          transform="rotate(-90 ${CENTER_X} ${CENTER_Y})" />`;
+          transform="rotate(-90 ${CENTER_X} ${CENTER_Y})" class="history-arc" />`;
     }).join('');
 
+    const tooltipRows = HABITS.map((habit) => {
+      const value = totals[habit.key] || 0;
+      const pct   = Math.round(Math.min(calculateProgress(habit, totals), 1) * 100);
+      return `
+        <div class="ht-row">
+          <span class="ht-dot" style="background:${habit.color}"></span>
+          <span class="ht-name">${habit.label.split(' ')[0]}</span>
+          <span class="ht-val" style="color:${habit.color}">${formatNumber(value)}${habit.unit}</span>
+          <span class="ht-pct">${pct}%</span>
+        </div>`;
+    }).join('');
+
+    const tooltipDate = date.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" });
+    const score = calculateDailyScore(totals);
     return `
       <div class="history-cell">
+        <div class="history-tooltip">
+          <div class="ht-header">
+            <span>${tooltipDate}</span>
+            <span class="ht-score">${score}%</span>
+          </div>
+          ${tooltipRows}
+        </div>
         <svg viewBox="0 0 ${SVG_SIZE} ${SVG_SIZE}" class="history-svg">${svgContent}</svg>
-        <span class="history-date">${label}</span>
+        <div class="history-meta">
+          <span class="history-date">${label}</span>
+          <span class="history-score">${score}%</span>
+        </div>
       </div>`;
   }).join('');
 
   return `<div class="history-grid">${cells}</div>`;
+}
+
+export function wireRingHover() {
+  document.querySelectorAll(".ring-group[data-habit]").forEach((group) => {
+    const card = document.querySelector(`.ring-label[data-habit="${group.dataset.habit}"]`);
+    if (!card) return;
+
+    const activate = () => {
+      card.classList.add("ring-label--active");
+      card.style.setProperty("--ring-color", group.dataset.color);
+      group.classList.add("ring-group--active");
+    };
+    const deactivate = () => {
+      card.classList.remove("ring-label--active");
+      group.classList.remove("ring-group--active");
+    };
+
+    group.addEventListener("mouseenter", activate);
+    group.addEventListener("mouseleave", deactivate);
+    card.addEventListener("mouseenter", activate);
+    card.addEventListener("mouseleave", deactivate);
+  });
 }
 
 export function animateRings() {

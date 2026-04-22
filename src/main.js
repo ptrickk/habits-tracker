@@ -1,7 +1,7 @@
 import "./style.css";
 import { initAuth, login, logout } from "./auth.js";
 import { fetchHabitData, getTodayTotals, getDailyAverages, getPast9DaysTotals } from "./sheets.js";
-import { renderRings, animateRings, renderHistoryGrid } from "./rings.js";
+import { renderRings, animateRings, wireRingHover, renderHistoryGrid } from "./rings.js";
 
 initAuth(
   (user) => renderApp(user),
@@ -30,6 +30,7 @@ async function renderApp(user) {
     }).firstElementChild;
     document.getElementById("status").replaceWith(ringsEl);
     animateRings();
+    wireRingHover();
 
     const historyHtml = renderHistoryGrid(pastDays);
     if (historyHtml) {
