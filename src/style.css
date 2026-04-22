@@ -148,6 +148,11 @@ body {
   color: #ccc;
 }
 
+.ring-label[data-habit="x"] .ring-name {
+  filter: blur(4px);
+  user-select: none;
+}
+
 .ring-stats {
   display: flex;
   align-items: baseline;

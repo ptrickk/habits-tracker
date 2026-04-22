@@ -2,7 +2,7 @@ import { HABIT_TARGETS } from './config.js';
 
 const HABITS = [
   { key: "seitenGelesen", label: "Seiten gelesen",   unit: "",    color: "#FF375F", inverted: false },
-  { key: "x",             label: "X",                unit: "",    color: "#FF9F0A", inverted: true  },
+  { key: "x",             label: "Anonymous activity",                unit: "",    color: "#FF9F0A", inverted: true  },
   { key: "wasser",        label: "Wasser getrunken", unit: "l",   color: "#30D158", inverted: false },
   { key: "meditation",    label: "Meditation",       unit: "min", color: "#5AC8FA", inverted: false },
 ];
