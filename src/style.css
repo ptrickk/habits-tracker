@@ -54,7 +54,24 @@ body {
 .rings-svg {
   width: 100%;
   max-width: 300px;
+  overflow: visible;
 }
+
+.ring-group .ring-track,
+.ring-group .ring-arc-base,
+.ring-group .ring-arc-overflow {
+  transition: stroke-width 0.25s ease;
+}
+.ring-group:hover .ring-track        { stroke-width: 26px; }
+.ring-group:hover .ring-arc-base     { stroke-width: 26px; }
+.ring-group:hover .ring-arc-overflow { stroke-width: 26px; }
+
+.ring-hover-text {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+.ring-group:hover .ring-hover-text { opacity: 1; }
 
 .rings-labels {
   width: 100%;
