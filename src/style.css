@@ -51,26 +51,16 @@ body {
   text-transform: capitalize;
 }
 
-.rings-svg-wrapper {
-  position: relative;
-  width: 100%;
-  max-width: 300px;
-}
-
 .rings-svg {
   display: block;
   width: 100%;
+  max-width: 300px;
   overflow: visible;
 }
 
-.score-row {
-  width: 100%;
-  display: flex;
-  justify-content: flex-end;
-  margin-top: -1rem;
-}
-
 .score-card {
+  align-self: flex-end;
+  margin-top: -1rem;
   background: #111;
   border: 1px solid #1a1a1a;
   border-radius: 10px;
