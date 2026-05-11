@@ -1,48 +1,27 @@
-import { HABIT_TARGETS } from './config.js';
+import { HABITS } from './config.js';
 
-const HABITS = [
-  { key: "seitenGelesen", label: "Seiten gelesen",   unit: "",    color: "#FF375F", inverted: false },
-  { key: "x",             label: "Anonymous activity",                unit: "",    color: "#FF9F0A", inverted: true  },
-  { key: "wasser",        label: "Wasser getrunken", unit: "l",   color: "#30D158", inverted: false },
-  { key: "meditation",    label: "Meditation",       unit: "min", color: "#5AC8FA", inverted: false },
-];
-
-const RING_RADII    = [120, 90, 60, 30];
-const STROKE_WIDTH  = 18;
-const SVG_SIZE      = 300;
-const CENTER_X      = SVG_SIZE / 2;
-const CENTER_Y      = SVG_SIZE / 2;
+const RING_RADII     = [120, 90, 60, 30];
+const STROKE_WIDTH   = 18;
+const SVG_SIZE       = 300;
+const CENTER_X       = SVG_SIZE / 2;
+const CENTER_Y       = SVG_SIZE / 2;
 const ARROWHEAD_SIZE = 6;
 // Radial distance from center at which hover labels are placed — always outside the outermost ring
-const LABEL_RADIUS  = RING_RADII[0] + STROKE_WIDTH / 2 + 24;
+const LABEL_RADIUS   = RING_RADII[0] + STROKE_WIDTH / 2 + 24;
 
-function calculateProgress(habit, totals) {
-  const value  = totals[habit.key] || 0;
-  const target = HABIT_TARGETS[habit.key];
+function calculateProgress(habit, totals, days = 1) {
+  const target = habit.target * days;
   if (!target) return 0;
-  return habit.inverted
-    ? Math.max(0, 1 - value / target)
-    : value / target;
+  const ratio = (totals[habit.key] || 0) / target;
+  return habit.inverted ? Math.max(0, 1 - ratio) : ratio;
 }
 
 function formatNumber(n) {
   return Number.isInteger(n) ? String(n) : n.toFixed(2);
 }
 
-function calculateSpanProgress(habit, totals, days) {
-  const value  = totals[habit.key] || 0;
-  const target = HABIT_TARGETS[habit.key] * days;
-  if (!target) return 0;
-  return habit.inverted ? Math.max(0, 1 - value / target) : value / target;
-}
-
-function calculateSpanScore(totals, days) {
-  const sum = HABITS.reduce((acc, h) => acc + Math.min(calculateSpanProgress(h, totals, days), 1), 0);
-  return Math.round((sum / HABITS.length) * 100);
-}
-
-function calculateDailyScore(totals) {
-  const sum = HABITS.reduce((acc, h) => acc + Math.min(calculateProgress(h, totals), 1), 0);
+function calculateScore(totals, days = 1) {
+  const sum = HABITS.reduce((acc, h) => acc + Math.min(calculateProgress(h, totals, days), 1), 0);
   return Math.round((sum / HABITS.length) * 100);
 }
 
@@ -56,7 +35,7 @@ function renderArrowhead(ringRadius, inverted) {
 
 // Renders a connector line + text label at a given angle on the ring, used for hover overlays.
 function renderLabelAtAngle(angleDeg, ringRadius, labelText, textColor, lineColor, fontSize = 14) {
-  const angleRad     = (angleDeg - 90) * Math.PI / 180;
+  const angleRad      = (angleDeg - 90) * Math.PI / 180;
   const lineStartDist = ringRadius + STROKE_WIDTH / 2 + 2;
   const lineEndDist   = LABEL_RADIUS - 7;
   const x1 = CENTER_X + lineStartDist * Math.cos(angleRad);
@@ -73,6 +52,37 @@ function renderLabelAtAngle(angleDeg, ringRadius, labelText, textColor, lineColo
       text-anchor="${textAnchor}" dominant-baseline="middle"
       class="ring-hover-text" fill="${textColor}" font-size="${fontSize}"
       font-weight="600" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">${labelText}</text>`;
+}
+
+function buildRingsSvg(progressFn) {
+  return HABITS.map((habit, index) => {
+    const ringRadius    = RING_RADII[index];
+    const circumference = 2 * Math.PI * ringRadius;
+    const clamped       = Math.min(Math.max(progressFn(habit), 3 / circumference), 1);
+    const dashOffset    = circumference * (1 - clamped);
+    return `
+      <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${ringRadius}" fill="none"
+        stroke="${habit.color}22" stroke-width="${STROKE_WIDTH}" class="history-track" />
+      <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${ringRadius}" fill="none"
+        stroke="${habit.color}" stroke-width="${STROKE_WIDTH}"
+        stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}"
+        stroke-linecap="round"
+        transform="rotate(-90 ${CENTER_X} ${CENTER_Y})" class="history-arc" />`;
+  }).join('');
+}
+
+function buildTooltipRows(totals, progressFn) {
+  return HABITS.map((habit) => {
+    const value      = totals[habit.key] || 0;
+    const percentage = Math.round(Math.min(progressFn(habit), 1) * 100);
+    return `
+      <div class="ht-row">
+        <span class="ht-dot" style="background:${habit.color}"></span>
+        <span class="ht-name">${habit.label.split(' ')[0]}</span>
+        <span class="ht-val" style="color:${habit.color}">${formatNumber(value)}${habit.unit}</span>
+        <span class="ht-pct">${percentage}%</span>
+      </div>`;
+  }).join('');
 }
 
 export function renderRings(today, averages) {
@@ -101,19 +111,18 @@ export function renderRings(today, averages) {
     const targetRotation = arrowFraction * 360 + strokeCapAngle;
 
     const habitAverage = averages[habit.key] || 0;
-    const habitTarget  = HABIT_TARGETS[habit.key];
     const avgFraction  = habit.inverted
-      ? Math.max(0, 1 - habitAverage / habitTarget)
-      : Math.min(1, habitAverage / habitTarget);
+      ? Math.max(0, 1 - habitAverage / habit.target)
+      : Math.min(1, habitAverage / habit.target);
     const avgAngle = avgFraction * 360;
 
     const transition = `1s cubic-bezier(0.4,0,0.2,1) ${index * 0.15}s`;
 
     const todayValue = today[habit.key] || 0;
     const goalAngle  = habit.inverted ? 360 : 0;
-    const todayLabel = renderLabelAtAngle(targetRotation, ringRadius, `${formatNumber(todayValue)}${habit.unit}`,           habit.color,              habit.color);
-    const avgLabel   = renderLabelAtAngle(avgAngle,       ringRadius, `∅ ${formatNumber(habitAverage)}${habit.unit}`,       'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.4)');
-    const goalLabel  = renderLabelAtAngle(goalAngle,      ringRadius, `${formatNumber(habitTarget)}${habit.unit}`,          'rgba(255,255,255,0.3)',  `${habit.color}88`);
+    const todayLabel = renderLabelAtAngle(targetRotation, ringRadius, `${formatNumber(todayValue)}${habit.unit}`,          habit.color,              habit.color);
+    const avgLabel   = renderLabelAtAngle(avgAngle,       ringRadius, `∅ ${formatNumber(habitAverage)}${habit.unit}`,      'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.4)');
+    const goalLabel  = renderLabelAtAngle(goalAngle,      ringRadius, `${formatNumber(habit.target)}${habit.unit}`,        'rgba(255,255,255,0.3)',  `${habit.color}88`);
 
     return `
       <g class="ring-group" data-habit="${habit.key}" data-color="${habit.color}">
@@ -164,7 +173,7 @@ export function renderRings(today, averages) {
         <span class="ring-name">${habit.label}</span>
         <span class="ring-stats">
           <span class="ring-value" style="color:${habit.color}">${formatNumber(value)}${habit.unit}</span>
-          <span class="ring-avg">/ ${formatNumber(HABIT_TARGETS[habit.key])}${habit.unit}</span>
+          <span class="ring-avg">/ ${formatNumber(habit.target)}${habit.unit}</span>
           <span class="ring-pct">${percentage}%</span>
         </span>
       </div>
@@ -172,7 +181,7 @@ export function renderRings(today, averages) {
   }).join("");
 
   const todayDate  = new Date().toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
-  const dailyScore = calculateDailyScore(today);
+  const dailyScore = calculateScore(today);
 
   return `
     <div class="rings-container">
@@ -191,38 +200,12 @@ export function renderHistoryGrid(pastDays) {
   if (!pastDays.length) return '';
 
   const cellsHtml = pastDays.map(({ date, totals }) => {
-    const dateLabel = date.toLocaleDateString("de-DE", { day: "numeric", month: "numeric" });
-
-    const ringsSvg = HABITS.map((habit, index) => {
-      const ringRadius    = RING_RADII[index];
-      const circumference = 2 * Math.PI * ringRadius;
-      const progress      = calculateProgress(habit, totals);
-      const clamped       = Math.min(Math.max(progress, 3 / circumference), 1);
-      const dashOffset    = circumference * (1 - clamped);
-      return `
-        <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${ringRadius}" fill="none"
-          stroke="${habit.color}22" stroke-width="${STROKE_WIDTH}" class="history-track" />
-        <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${ringRadius}" fill="none"
-          stroke="${habit.color}" stroke-width="${STROKE_WIDTH}"
-          stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}"
-          stroke-linecap="round"
-          transform="rotate(-90 ${CENTER_X} ${CENTER_Y})" class="history-arc" />`;
-    }).join('');
-
-    const tooltipRowsHtml = HABITS.map((habit) => {
-      const value      = totals[habit.key] || 0;
-      const percentage = Math.round(Math.min(calculateProgress(habit, totals), 1) * 100);
-      return `
-        <div class="ht-row">
-          <span class="ht-dot" style="background:${habit.color}"></span>
-          <span class="ht-name">${habit.label.split(' ')[0]}</span>
-          <span class="ht-val" style="color:${habit.color}">${formatNumber(value)}${habit.unit}</span>
-          <span class="ht-pct">${percentage}%</span>
-        </div>`;
-    }).join('');
-
-    const tooltipDate = date.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" });
-    const dailyScore  = calculateDailyScore(totals);
+    const progressFn      = (habit) => calculateProgress(habit, totals);
+    const ringsSvg        = buildRingsSvg(progressFn);
+    const tooltipRowsHtml = buildTooltipRows(totals, progressFn);
+    const tooltipDate     = date.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "short" });
+    const dateLabel       = date.toLocaleDateString("de-DE", { day: "numeric", month: "numeric" });
+    const dailyScore      = calculateScore(totals);
 
     return `
       <div class="history-cell">
@@ -248,35 +231,10 @@ export function renderSummaryGrid(spans) {
   if (!spans.length) return '';
 
   const cellsHtml = spans.map(({ label, totals, days }) => {
-    const ringsSvg = HABITS.map((habit, index) => {
-      const ringRadius    = RING_RADII[index];
-      const circumference = 2 * Math.PI * ringRadius;
-      const progress      = calculateSpanProgress(habit, totals, days);
-      const clamped       = Math.min(Math.max(progress, 3 / circumference), 1);
-      const dashOffset    = circumference * (1 - clamped);
-      return `
-        <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${ringRadius}" fill="none"
-          stroke="${habit.color}22" stroke-width="${STROKE_WIDTH}" class="history-track" />
-        <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${ringRadius}" fill="none"
-          stroke="${habit.color}" stroke-width="${STROKE_WIDTH}"
-          stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}"
-          stroke-linecap="round"
-          transform="rotate(-90 ${CENTER_X} ${CENTER_Y})" class="history-arc" />`;
-    }).join('');
-
-    const tooltipRowsHtml = HABITS.map((habit) => {
-      const value      = totals[habit.key] || 0;
-      const percentage = Math.round(Math.min(calculateSpanProgress(habit, totals, days), 1) * 100);
-      return `
-        <div class="ht-row">
-          <span class="ht-dot" style="background:${habit.color}"></span>
-          <span class="ht-name">${habit.label.split(' ')[0]}</span>
-          <span class="ht-val" style="color:${habit.color}">${formatNumber(value)}${habit.unit}</span>
-          <span class="ht-pct">${percentage}%</span>
-        </div>`;
-    }).join('');
-
-    const spanScore = calculateSpanScore(totals, days);
+    const progressFn      = (habit) => calculateProgress(habit, totals, days);
+    const ringsSvg        = buildRingsSvg(progressFn);
+    const tooltipRowsHtml = buildTooltipRows(totals, progressFn);
+    const spanScore       = calculateScore(totals, days);
 
     return `
       <div class="history-cell">
@@ -303,30 +261,22 @@ export function wireRingHover() {
     const labelCard = document.querySelector(`.ring-label[data-habit="${ringGroup.dataset.habit}"]`);
     if (!labelCard) return;
 
-    const activate = () => {
-      labelCard.classList.add("ring-label--active");
-      labelCard.style.setProperty("--ring-color", ringGroup.dataset.color);
-      ringGroup.classList.add("ring-group--active");
+    const toggle = (on) => {
+      labelCard.classList.toggle("ring-label--active", on);
+      if (on) labelCard.style.setProperty("--ring-color", ringGroup.dataset.color);
+      ringGroup.classList.toggle("ring-group--active", on);
     };
-    const deactivate = () => {
-      labelCard.classList.remove("ring-label--active");
-      ringGroup.classList.remove("ring-group--active");
-    };
-
-    ringGroup.addEventListener("mouseenter", activate);
-    ringGroup.addEventListener("mouseleave", deactivate);
-    labelCard.addEventListener("mouseenter", activate);
-    labelCard.addEventListener("mouseleave", deactivate);
+    [ringGroup, labelCard].forEach(el => {
+      el.addEventListener("mouseenter", () => toggle(true));
+      el.addEventListener("mouseleave", () => toggle(false));
+    });
   });
 }
 
 export function animateRings() {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      document.querySelectorAll(".ring-progress").forEach((el) => {
-        el.style.strokeDashoffset = el.dataset.final;
-      });
-      document.querySelectorAll(".ring-overflow").forEach((el) => {
+      document.querySelectorAll(".ring-progress, .ring-overflow").forEach((el) => {
         el.style.strokeDashoffset = el.dataset.final;
       });
       document.querySelectorAll(".ring-indicator").forEach((el) => {

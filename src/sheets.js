@@ -1,3 +1,5 @@
+import { HABITS } from './config.js';
+
 const SPREADSHEET_ID = "13OU6OkVxOOgMgfmvHpu2FGLrYy7uTBoWxb9L0_yOAq0";
 const SHEET_NAME = "Entries";
 const RANGE = `${SHEET_NAME}!A:E`;
@@ -22,7 +24,7 @@ export async function fetchHabitData() {
   if (!res.ok) throw new Error(`Sheets API error: ${res.status}`);
 
   const json = await res.json();
-  const [header, ...rows] = json.values;
+  const [, ...rows] = json.values;
 
   return rows.map((row) => ({
     timestamp: new Date(row[0]),
@@ -35,8 +37,7 @@ export async function fetchHabitData() {
 
 export function getTodayTotals(data) {
   const today = new Date().toDateString();
-  const todayRows = data.filter((r) => r.timestamp.toDateString() === today);
-  return sumRows(todayRows);
+  return sumRows(data.filter((r) => r.timestamp.toDateString() === today));
 }
 
 export function getDailyAverages(data) {
@@ -46,16 +47,9 @@ export function getDailyAverages(data) {
     if (!byDay[key]) byDay[key] = [];
     byDay[key].push(row);
   }
-
   const dailyTotals = Object.values(byDay).map(sumRows);
   const n = dailyTotals.length || 1;
-
-  return {
-    seitenGelesen: dailyTotals.reduce((s, d) => s + d.seitenGelesen, 0) / n,
-    x: dailyTotals.reduce((s, d) => s + d.x, 0) / n,
-    wasser: dailyTotals.reduce((s, d) => s + d.wasser, 0) / n,
-    meditation: dailyTotals.reduce((s, d) => s + d.meditation, 0) / n,
-  };
+  return Object.fromEntries(HABITS.map(({ key }) => [key, dailyTotals.reduce((s, d) => s + d[key], 0) / n]));
 }
 
 export function getPast9DaysTotals(data) {
@@ -73,18 +67,21 @@ export function getPast9DaysTotals(data) {
     .map(([key, rows]) => ({ date: new Date(key), totals: sumRows(rows) }));
 }
 
+function aggregateFromDate(data, from, days) {
+  return { totals: sumRows(data.filter(r => r.timestamp >= from)), days };
+}
+
 export function getSpanTotals(data, nDays) {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - nDays + 1);
   cutoff.setHours(0, 0, 0, 0);
-  return { totals: sumRows(data.filter(r => r.timestamp >= cutoff)), days: nDays };
+  return aggregateFromDate(data, cutoff, nDays);
 }
 
 export function getYearToDateTotals(data) {
   const today = new Date();
   const jan1  = new Date(today.getFullYear(), 0, 1);
-  const days  = Math.round((today - jan1) / 86400000) + 1;
-  return { totals: sumRows(data.filter(r => r.timestamp >= jan1)), days };
+  return aggregateFromDate(data, jan1, Math.round((today - jan1) / 86400000) + 1);
 }
 
 export function getAllTimeTotals(data) {
@@ -92,20 +89,12 @@ export function getAllTimeTotals(data) {
   const first = new Date(Math.min(...data.map(r => r.timestamp.getTime())));
   first.setHours(0, 0, 0, 0);
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const days  = Math.round((today - first) / 86400000) + 1;
-  return { totals: sumRows(data), days };
+  return aggregateFromDate(data, first, Math.round((today - first) / 86400000) + 1);
 }
 
 function sumRows(rows) {
-  return rows.reduce(
-    (acc, r) => ({
-      seitenGelesen: acc.seitenGelesen + r.seitenGelesen,
-      x: acc.x + r.x,
-      wasser: acc.wasser + r.wasser,
-      meditation: acc.meditation + r.meditation,
-    }),
-    { seitenGelesen: 0, x: 0, wasser: 0, meditation: 0 }
-  );
+  const zero = Object.fromEntries(HABITS.map(h => [h.key, 0]));
+  return rows.reduce((acc, r) => Object.fromEntries(HABITS.map(({ key }) => [key, acc[key] + r[key]])), zero);
 }
 
 function parseGermanFloat(val) {

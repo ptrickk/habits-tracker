@@ -3,6 +3,8 @@ import { initAuth, login, logout } from "./auth.js";
 import { fetchHabitData, getTodayTotals, getDailyAverages, getPast9DaysTotals, getSpanTotals, getYearToDateTotals, getAllTimeTotals } from "./sheets.js";
 import { renderRings, animateRings, wireRingHover, renderHistoryGrid, renderSummaryGrid } from "./rings.js";
 
+const htmlToElement = html => Object.assign(document.createElement("div"), { innerHTML: html }).firstElementChild;
+
 initAuth(
   (user) => renderApp(user),
   (errorMsg) => renderLogin(errorMsg)
@@ -25,9 +27,7 @@ async function renderApp(user) {
     const averages = getDailyAverages(data);
     const pastDays = getPast9DaysTotals(data);
 
-    const ringsEl = Object.assign(document.createElement("div"), {
-      innerHTML: renderRings(today, averages),
-    }).firstElementChild;
+    const ringsEl = htmlToElement(renderRings(today, averages));
     document.getElementById("status").replaceWith(ringsEl);
     animateRings();
     wireRingHover();
@@ -35,9 +35,7 @@ async function renderApp(user) {
     const historyHtml = renderHistoryGrid(pastDays);
     let lastEl = ringsEl;
     if (historyHtml) {
-      const historyEl = Object.assign(document.createElement("div"), {
-        innerHTML: historyHtml,
-      }).firstElementChild;
+      const historyEl = htmlToElement(historyHtml);
       ringsEl.after(historyEl);
       lastEl = historyEl;
     }
@@ -49,12 +47,7 @@ async function renderApp(user) {
       { label: 'Gesamt',      ...getAllTimeTotals(data)      },
     ];
     const summaryHtml = renderSummaryGrid(spans);
-    if (summaryHtml) {
-      const summaryEl = Object.assign(document.createElement("div"), {
-        innerHTML: summaryHtml,
-      }).firstElementChild;
-      lastEl.after(summaryEl);
-    }
+    if (summaryHtml) lastEl.after(htmlToElement(summaryHtml));
   } catch (err) {
     if (err.message === "No access token" || err.message.includes("401")) {
       document.getElementById("status").innerHTML = `

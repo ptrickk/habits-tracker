@@ -97,20 +97,16 @@ body {
 .ring-group .ring-arc-overflow {
   transition: stroke-width 0.25s ease;
 }
-.ring-group:hover .ring-track,
-.ring-group--active .ring-track        { stroke-width: 26px; }
-.ring-group:hover .ring-arc-base,
-.ring-group--active .ring-arc-base     { stroke-width: 26px; }
-.ring-group:hover .ring-arc-overflow,
-.ring-group--active .ring-arc-overflow { stroke-width: 26px; }
+.ring-group:is(:hover, .ring-group--active) .ring-track,
+.ring-group:is(:hover, .ring-group--active) .ring-arc-base,
+.ring-group:is(:hover, .ring-group--active) .ring-arc-overflow { stroke-width: 26px; }
 
 .ring-hover-text {
   opacity: 0;
   transition: opacity 0.2s ease;
   pointer-events: none;
 }
-.ring-group:hover .ring-hover-text,
-.ring-group--active .ring-hover-text { opacity: 1; }
+.ring-group:is(:hover, .ring-group--active) .ring-hover-text { opacity: 1; }
 
 .rings-labels {
   width: 100%;
@@ -324,8 +320,7 @@ body {
 .history-cell:hover .history-svg { transform: scale(1.07); }
 
 .history-track, .history-arc { transition: stroke-width 0.2s ease; }
-.history-cell:hover .history-track { stroke-width: 24px; }
-.history-cell:hover .history-arc   { stroke-width: 24px; }
+.history-cell:hover :is(.history-track, .history-arc) { stroke-width: 24px; }
 
 .history-date {
   font-size: 0.7rem;
