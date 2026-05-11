@@ -1,7 +1,7 @@
 import "./style.css";
 import { initAuth, login, logout } from "./auth.js";
-import { fetchHabitData, getTodayTotals, getDailyAverages, getPast9DaysTotals } from "./sheets.js";
-import { renderRings, animateRings, wireRingHover, renderHistoryGrid } from "./rings.js";
+import { fetchHabitData, getTodayTotals, getDailyAverages, getPast9DaysTotals, getSpanTotals, getYearToDateTotals, getAllTimeTotals } from "./sheets.js";
+import { renderRings, animateRings, wireRingHover, renderHistoryGrid, renderSummaryGrid } from "./rings.js";
 
 initAuth(
   (user) => renderApp(user),
@@ -33,11 +33,27 @@ async function renderApp(user) {
     wireRingHover();
 
     const historyHtml = renderHistoryGrid(pastDays);
+    let lastEl = ringsEl;
     if (historyHtml) {
       const historyEl = Object.assign(document.createElement("div"), {
         innerHTML: historyHtml,
       }).firstElementChild;
       ringsEl.after(historyEl);
+      lastEl = historyEl;
+    }
+
+    const spans = [
+      { label: '7 Tage',      ...getSpanTotals(data, 7)     },
+      { label: '30 Tage',     ...getSpanTotals(data, 30)    },
+      { label: 'Dieses Jahr', ...getYearToDateTotals(data)  },
+      { label: 'Gesamt',      ...getAllTimeTotals(data)      },
+    ];
+    const summaryHtml = renderSummaryGrid(spans);
+    if (summaryHtml) {
+      const summaryEl = Object.assign(document.createElement("div"), {
+        innerHTML: summaryHtml,
+      }).firstElementChild;
+      lastEl.after(summaryEl);
     }
   } catch (err) {
     if (err.message === "No access token" || err.message.includes("401")) {

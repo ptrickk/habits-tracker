@@ -29,6 +29,18 @@ function formatNumber(n) {
   return Number.isInteger(n) ? String(n) : n.toFixed(2);
 }
 
+function calculateSpanProgress(habit, totals, days) {
+  const value  = totals[habit.key] || 0;
+  const target = HABIT_TARGETS[habit.key] * days;
+  if (!target) return 0;
+  return habit.inverted ? Math.max(0, 1 - value / target) : value / target;
+}
+
+function calculateSpanScore(totals, days) {
+  const sum = HABITS.reduce((acc, h) => acc + Math.min(calculateSpanProgress(h, totals, days), 1), 0);
+  return Math.round((sum / HABITS.length) * 100);
+}
+
 function calculateDailyScore(totals) {
   const sum = HABITS.reduce((acc, h) => acc + Math.min(calculateProgress(h, totals), 1), 0);
   return Math.round((sum / HABITS.length) * 100);
@@ -230,6 +242,60 @@ export function renderHistoryGrid(pastDays) {
   }).join('');
 
   return `<div class="history-grid">${cellsHtml}</div>`;
+}
+
+export function renderSummaryGrid(spans) {
+  if (!spans.length) return '';
+
+  const cellsHtml = spans.map(({ label, totals, days }) => {
+    const ringsSvg = HABITS.map((habit, index) => {
+      const ringRadius    = RING_RADII[index];
+      const circumference = 2 * Math.PI * ringRadius;
+      const progress      = calculateSpanProgress(habit, totals, days);
+      const clamped       = Math.min(Math.max(progress, 3 / circumference), 1);
+      const dashOffset    = circumference * (1 - clamped);
+      return `
+        <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${ringRadius}" fill="none"
+          stroke="${habit.color}22" stroke-width="${STROKE_WIDTH}" class="history-track" />
+        <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${ringRadius}" fill="none"
+          stroke="${habit.color}" stroke-width="${STROKE_WIDTH}"
+          stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}"
+          stroke-linecap="round"
+          transform="rotate(-90 ${CENTER_X} ${CENTER_Y})" class="history-arc" />`;
+    }).join('');
+
+    const tooltipRowsHtml = HABITS.map((habit) => {
+      const value      = totals[habit.key] || 0;
+      const percentage = Math.round(Math.min(calculateSpanProgress(habit, totals, days), 1) * 100);
+      return `
+        <div class="ht-row">
+          <span class="ht-dot" style="background:${habit.color}"></span>
+          <span class="ht-name">${habit.label.split(' ')[0]}</span>
+          <span class="ht-val" style="color:${habit.color}">${formatNumber(value)}${habit.unit}</span>
+          <span class="ht-pct">${percentage}%</span>
+        </div>`;
+    }).join('');
+
+    const spanScore = calculateSpanScore(totals, days);
+
+    return `
+      <div class="history-cell">
+        <div class="history-tooltip">
+          <div class="ht-header">
+            <span>${label}</span>
+            <span class="ht-score">${spanScore}%</span>
+          </div>
+          ${tooltipRowsHtml}
+        </div>
+        <svg viewBox="0 0 ${SVG_SIZE} ${SVG_SIZE}" class="history-svg">${ringsSvg}</svg>
+        <div class="history-meta">
+          <span class="history-date">${label}</span>
+          <span class="history-score">${spanScore}%</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `<div class="summary-grid">${cellsHtml}</div>`;
 }
 
 export function wireRingHover() {

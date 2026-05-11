@@ -73,6 +73,29 @@ export function getPast9DaysTotals(data) {
     .map(([key, rows]) => ({ date: new Date(key), totals: sumRows(rows) }));
 }
 
+export function getSpanTotals(data, nDays) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - nDays + 1);
+  cutoff.setHours(0, 0, 0, 0);
+  return { totals: sumRows(data.filter(r => r.timestamp >= cutoff)), days: nDays };
+}
+
+export function getYearToDateTotals(data) {
+  const today = new Date();
+  const jan1  = new Date(today.getFullYear(), 0, 1);
+  const days  = Math.round((today - jan1) / 86400000) + 1;
+  return { totals: sumRows(data.filter(r => r.timestamp >= jan1)), days };
+}
+
+export function getAllTimeTotals(data) {
+  if (!data.length) return { totals: sumRows([]), days: 1 };
+  const first = new Date(Math.min(...data.map(r => r.timestamp.getTime())));
+  first.setHours(0, 0, 0, 0);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const days  = Math.round((today - first) / 86400000) + 1;
+  return { totals: sumRows(data), days };
+}
+
 function sumRows(rows) {
   return rows.reduce(
     (acc, r) => ({
