@@ -101,6 +101,10 @@ body {
 .ring-group:is(:hover, .ring-group--active) .ring-arc-base,
 .ring-group:is(:hover, .ring-group--active) .ring-arc-overflow { stroke-width: 26px; }
 
+.ring-cap, .ring-cap-shadow { transition: r 0.25s ease; }
+.ring-group:is(:hover, .ring-group--active) .ring-cap,
+.ring-group:is(:hover, .ring-group--active) .ring-cap-shadow { r: 13; }
+
 .ring-hover-text {
   opacity: 0;
   transition: opacity 0.2s ease;

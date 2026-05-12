@@ -155,6 +155,15 @@ export function renderRings(today, averages) {
           data-final-rotate="${targetRotation}"
           style="transform-origin:${CENTER_X}px ${CENTER_Y}px; transform:rotate(${startRotation}deg);
                  transition: transform ${transition}">
+          ${isOverflow ? `
+            <circle cx="${CENTER_X}" cy="${CENTER_Y - ringRadius}" r="${STROKE_WIDTH / 2}"
+              fill="rgba(0,0,0,0.6)"
+              class="ring-cap-shadow"
+              transform="rotate(1 ${CENTER_X} ${CENTER_Y})" />
+            <circle cx="${CENTER_X}" cy="${CENTER_Y - ringRadius}" r="${STROKE_WIDTH / 2}"
+              fill="${habit.color}"
+              class="ring-cap" />
+          ` : ''}
           ${renderArrowhead(ringRadius, habit.inverted)}
         </g>
         ${todayLabel}
