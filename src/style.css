@@ -331,6 +331,35 @@ body {
   color: #444;
 }
 
+.weight-chart {
+  width: 100%;
+  max-width: 480px;
+  margin: 1.5rem auto 0;
+  background: #111;
+  border: 1px solid #1a1a1a;
+  border-radius: 14px;
+  padding: 1rem 1rem 0.75rem;
+}
+
+.weight-chart__title {
+  font-size: 0.78rem;
+  color: #555;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+
+.weight-chart__svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+
+.dot-group { cursor: default; }
+.dot-group .dot-tip { opacity: 0; pointer-events: none; transition: opacity 0.15s ease; }
+.dot-group:hover .dot-tip { opacity: 1; }
+.dot-group:hover .dot-circle { fill: #d070ff; }
+
 .history-score {
   font-size: 0.65rem;
   color: #555;

@@ -124,6 +124,10 @@ export function renderRings(today, averages) {
     const avgLabel   = renderLabelAtAngle(avgAngle,       ringRadius, `∅ ${formatNumber(habitAverage)}${habit.unit}`,      'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.4)');
     const goalLabel  = renderLabelAtAngle(goalAngle,      ringRadius, `${formatNumber(habit.target)}${habit.unit}`,        'rgba(255,255,255,0.3)',  `${habit.color}88`);
 
+    // Encode the 1° offset directly in cx/cy to avoid SVG transform attribute, which prevents CSS r-property transitions
+    const shadowCx = (CENTER_X + ringRadius * Math.sin(Math.PI / 180)).toFixed(2);
+    const shadowCy = (CENTER_Y - ringRadius * Math.cos(Math.PI / 180)).toFixed(2);
+
     return `
       <g class="ring-group" data-habit="${habit.key}" data-color="${habit.color}">
         <circle cx="${CENTER_X}" cy="${CENTER_Y}" r="${ringRadius}" fill="none"
@@ -156,10 +160,9 @@ export function renderRings(today, averages) {
           style="transform-origin:${CENTER_X}px ${CENTER_Y}px; transform:rotate(${startRotation}deg);
                  transition: transform ${transition}">
           ${isOverflow ? `
-            <circle cx="${CENTER_X}" cy="${CENTER_Y - ringRadius}" r="${STROKE_WIDTH / 2}"
+            <circle cx="${shadowCx}" cy="${shadowCy}" r="${STROKE_WIDTH / 2}"
               fill="rgba(0,0,0,0.6)"
-              class="ring-cap-shadow"
-              transform="rotate(1 ${CENTER_X} ${CENTER_Y})" />
+              class="ring-cap-shadow" />
             <circle cx="${CENTER_X}" cy="${CENTER_Y - ringRadius}" r="${STROKE_WIDTH / 2}"
               fill="${habit.color}"
               class="ring-cap" />

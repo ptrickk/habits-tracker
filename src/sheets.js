@@ -2,7 +2,7 @@ import { HABITS } from './config.js';
 
 const SPREADSHEET_ID = "13OU6OkVxOOgMgfmvHpu2FGLrYy7uTBoWxb9L0_yOAq0";
 const SHEET_NAME = "Entries";
-const RANGE = `${SHEET_NAME}!A:E`;
+const RANGE = `${SHEET_NAME}!A:F`;
 
 export function setAccessToken(token) {
   sessionStorage.setItem("gAccessToken", token);
@@ -32,6 +32,7 @@ export async function fetchHabitData() {
     x: parseGermanFloat(row[2]),
     wasser: parseGermanFloat(row[3]),
     meditation: parseGermanFloat(row[4]),
+    weight: parseGermanFloat(row[5]),
   }));
 }
 
@@ -95,6 +96,16 @@ export function getAllTimeTotals(data) {
 function sumRows(rows) {
   const zero = Object.fromEntries(HABITS.map(h => [h.key, 0]));
   return rows.reduce((acc, r) => Object.fromEntries(HABITS.map(({ key }) => [key, acc[key] + r[key]])), zero);
+}
+
+export function getWeightByDate(data) {
+  const byDay = {};
+  for (const row of data) {
+    if (row.weight === 0) continue;
+    const key = row.timestamp.toDateString();
+    byDay[key] = { date: new Date(key), weight: row.weight };
+  }
+  return Object.values(byDay).sort((a, b) => a.date - b.date);
 }
 
 function parseGermanFloat(val) {
