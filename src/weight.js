@@ -31,7 +31,7 @@ export function renderWeightChart(weightData) {
   const fmtDate = d => d.date.toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: '2-digit' });
 
   const gridLines = yLabels.map(({ y }) =>
-    `<line x1="${PAD.left}" y1="${y.toFixed(1)}" x2="${W - PAD.right}" y2="${y.toFixed(1)}" stroke="#1a1a1a" stroke-width="1" />`
+    `<line x1="${PAD.left}" y1="${y.toFixed(1)}" x2="${W - PAD.right}" y2="${y.toFixed(1)}" stroke="#222" stroke-width="1" />`
   ).join('');
 
   const yAxisLabels = yLabels.map(({ val, y }) =>
@@ -63,12 +63,27 @@ export function renderWeightChart(weightData) {
     </g>`;
   }).join('');
 
-  const first = weightData[0];
-  const last  = weightData[weightData.length - 1];
-
-  const xLabels =
-    `<text x="${toX(first.date).toFixed(1)}" y="${H - 6}" text-anchor="start" fill="#555" font-size="9" font-family="${FONT}">${fmtDate(first)}</text>` +
-    `<text x="${toX(last.date).toFixed(1)}"  y="${H - 6}" text-anchor="end"   fill="#555" font-size="9" font-family="${FONT}">${fmtDate(last)}</text>`;
+  const xLabels = (() => {
+    const LABEL_W = 38, MIN_GAP = 6;
+    const last = weightData.length - 1;
+    for (let n = 4; n >= 2; n--) {
+      const indices = [...new Set(
+        Array.from({ length: n }, (_, i) => Math.round((i / (n - 1)) * last))
+      )];
+      if (indices.length < 2) continue;
+      const pts = indices.map(idx => ({
+        x: toX(weightData[idx].date),
+        date: weightData[idx].date,
+      }));
+      const fits = pts.every((p, i) =>
+        i === 0 || pts[i].x - pts[i - 1].x >= LABEL_W + MIN_GAP
+      );
+      if (fits) return pts.map(p =>
+        `<text x="${p.x.toFixed(1)}" y="${H - 6}" text-anchor="middle" fill="#555" font-size="9" font-family="${FONT}">${fmtDate(p)}</text>`
+      ).join('');
+    }
+    return '';
+  })();
 
   const wrapper = document.createElement('div');
   wrapper.className = 'weight-chart';

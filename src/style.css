@@ -335,17 +335,13 @@ body {
   width: 100%;
   max-width: 480px;
   margin: 1.5rem auto 0;
-  background: #111;
-  border: 1px solid #1a1a1a;
-  border-radius: 14px;
-  padding: 1rem 1rem 0.75rem;
 }
 
 .weight-chart__title {
   font-size: 0.78rem;
   color: #555;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-align: center;
   margin-bottom: 0.6rem;
 }
 
@@ -358,7 +354,8 @@ body {
 .dot-group { cursor: default; }
 .dot-group .dot-tip { opacity: 0; pointer-events: none; transition: opacity 0.15s ease; }
 .dot-group:hover .dot-tip { opacity: 1; }
-.dot-group:hover .dot-circle { fill: #d070ff; }
+.dot-circle { transition: transform 0.15s ease, fill 0.15s ease; transform-box: fill-box; transform-origin: center; }
+.dot-group:hover .dot-circle { transform: scale(1.8); fill: #d070ff; }
 
 .history-score {
   font-size: 0.65rem;
